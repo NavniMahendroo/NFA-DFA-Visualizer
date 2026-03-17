@@ -203,16 +203,19 @@ button:disabled {
 }
 
 #stepsList {
+	padding-left: 25px; /* more space for numbers */
 	margin: 0;
 	max-height: 255px;
 	overflow: auto;
-	padding-left: 20px;
+	list-style-position: outside;
+	list-style-type: decimal;
 }
 
 #stepsList li {
 	color: #3f4858;
 	margin: 0 0 8px;
 	font-size: 0.9rem;
+	padding-left: 20px; /* extra space inside list item */
 }
 
 .graphs {
