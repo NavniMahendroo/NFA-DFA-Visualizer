@@ -15,6 +15,7 @@ q1,b->q2`;
     stepBtn: document.getElementById('stepBtn'),
     runAllBtn: document.getElementById('runAllBtn'),
     resetBtn: document.getElementById('resetBtn'),
+    themeToggle: document.getElementById('themeToggle'),
     stepsList: document.getElementById('stepsList'),
     nfaSvg: document.getElementById('nfaSvg'),
     dfaSvg: document.getElementById('dfaSvg'),
@@ -22,7 +23,39 @@ q1,b->q2`;
     dfaTableContainer: document.getElementById('dfaTableContainer')
   };
 
+  const THEME_STORAGE_KEY = 'tafl-theme';
   let nfa = null, dfa = null, steps = [], stepIndex = 0;
+
+  function applyTheme(theme){
+    const normalized = theme === 'dark' ? 'dark' : 'light';
+    document.body.setAttribute('data-theme', normalized);
+    if (els.themeToggle) {
+      const isDark = normalized === 'dark';
+      els.themeToggle.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      els.themeToggle.setAttribute('aria-pressed', String(isDark));
+      els.themeToggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    }
+  }
+
+  function loadSavedTheme(){
+    try {
+      const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        return savedTheme;
+      }
+    } catch (err) {
+      // Ignore storage access issues and keep the default theme.
+    }
+    return 'light';
+  }
+
+  function saveTheme(theme){
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch (err) {
+      // Ignore storage access issues.
+    }
+  }
 
   function normalizeStateSet(states){
     return Array.from(new Set(states.filter(Boolean))).sort();
@@ -208,6 +241,7 @@ q1,b->q2`;
     const defs = document.createElementNS(svgNs, 'defs');
     const marker = document.createElementNS(svgNs, 'marker');
     const markerId = `${svgEl.id}-arrowhead`;
+    const edgeColor = getComputedStyle(document.body).getPropertyValue('--edge-color').trim() || '#333';
     marker.setAttribute('id', markerId);
     marker.setAttribute('viewBox', '0 0 10 10');
     marker.setAttribute('refX', '9');
@@ -217,7 +251,7 @@ q1,b->q2`;
     marker.setAttribute('orient', 'auto-start-reverse');
     const arrowPath = document.createElementNS(svgNs, 'path');
     arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
-    arrowPath.setAttribute('fill', '#333');
+    arrowPath.setAttribute('fill', edgeColor);
     marker.appendChild(arrowPath);
     defs.appendChild(marker);
     svgEl.appendChild(defs);
@@ -432,7 +466,7 @@ q1,b->q2`;
       if(nd.accept){
         const inner = document.createElementNS(svgNs,'circle');
         inner.setAttribute('cx',x); inner.setAttribute('cy',y); inner.setAttribute('r',Math.max(10, stateRadius - 4)); inner.setAttribute('class','node');
-        inner.setAttribute('fill','none'); inner.setAttribute('stroke','#333'); inner.setAttribute('stroke-width','1.2'); g.appendChild(inner);
+        inner.setAttribute('fill','none'); inner.setAttribute('stroke',edgeColor); inner.setAttribute('stroke-width','1.2'); g.appendChild(inner);
       }
       const text = document.createElementNS(svgNs,'text');
       text.setAttribute('x',x); text.setAttribute('class','node-label');
@@ -563,7 +597,18 @@ q1,b->q2`;
     renderAll();
   });
 
+  if (els.themeToggle) {
+    els.themeToggle.addEventListener('click', () => {
+      const current = document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      saveTheme(next);
+      renderAll();
+    });
+  }
+
   // init sample
+  applyTheme(loadSavedTheme());
   els.nfaInput.value = sample;
   nfa = parseNFA(sample);
   renderAll();
