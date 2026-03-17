@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NFA → DFA Subset Construction Visualizer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"></div>
+
+  <header class="hero">
+    <p class="hero-kicker">Theory of Automata Lab</p>
+    <h1>NFA → DFA Visual Studio</h1>
+    <p class="hero-subtitle">Step through subset construction and watch each reachable state emerge in real time.</p>
+  </header>
+
+  <main class="app-shell">
+    <section class="left">
+      <div class="panel-head">
+        <h2>Machine Input</h2>
+        <p>Use <strong>eps</strong> or <strong>ε</strong> for epsilon transitions.</p>
+      </div>
+
+      <label for="nfaInput"><strong>NFA Definition</strong></label>
+      <textarea id="nfaInput" rows="14"></textarea>
+
+      <div class="controls">
+        <button id="parseBtn">Parse NFA</button>
+        <button id="stepBtn" disabled>Next Step</button>
+        <button id="runAllBtn" disabled>Run All</button>
+        <button id="resetBtn">Reset</button>
+      </div>
+
+      <div id="stepsPanel">
+        <h3>Construction Steps</h3>
+        <ol id="stepsList"></ol>
+      </div>
+    </section>
+
+    <section class="right">
+      <div class="graphs">
+        <article class="graph-block">
+          <h3>NFA Graph</h3>
+          <div class="graph-content">
+            <svg id="nfaSvg" width="640" height="360"></svg>
+            <div class="table-panel" id="nfaTableContainer"></div>
+          </div>
+        </article>
+
+        <article class="graph-block">
+          <h3>DFA Graph</h3>
+          <div class="graph-content">
+            <svg id="dfaSvg" width="640" height="420"></svg>
+            <div class="table-panel" id="dfaTableContainer"></div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <small>Supports epsilon using 'eps' or 'ε'. Example NFA is preloaded.</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
