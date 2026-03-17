@@ -12,4 +12,3 @@ Usage:
 - Click `Parse NFA` to run subset construction. Use `Next Step` to step through or `Run All` to complete.
 
 The app draws simple SVG graphs for the NFA and the generated DFA and displays the DFA transition table.
-# NFA-DFA-Visualizer
