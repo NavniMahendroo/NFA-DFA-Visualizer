@@ -66,7 +66,7 @@ q1,b->q2`;
   }
 
   function subsetLabel(states){
-    return states.length ? `{${states.join(',')}}` : '{}';
+    return states.length ? `{${states.join(',')}}` : '{qd}';
   }
 
   function clearSvg(svgEl){
@@ -290,12 +290,28 @@ q1,b->q2`;
     const maxLabelLen = Math.max(...nodes.map(nd => nd.id.length));
     const baseNodeRadius = Math.max(14, Math.min(22, 22 - Math.max(0, n - 3) * 1.2 - Math.max(0, maxLabelLen - 6) * 0.4));
     const nodeRadii = {};
+    const layoutNodeRadii = {};
     for (const nd of nodes) {
       // Fit label text inside circle; cap tightly so loops don't blow up.
       const estTextWidth = 8 + nd.id.length * 5.4;
-      nodeRadii[nd.id] = Math.max(baseNodeRadius, Math.min(32, Math.ceil(estTextWidth / 2 + 4)));
+      const baseRadiusForNode = Math.max(baseNodeRadius, Math.min(32, Math.ceil(estTextWidth / 2 + 4)));
+      layoutNodeRadii[nd.id] = baseRadiusForNode;
+      // For DFA subset nodes containing many NFA states, bump radius for readability.
+      let subsetSize = Array.isArray(nd.states) ? nd.states.length : 0;
+      if (!subsetSize && typeof nd.id === 'string' && nd.id.startsWith('{') && nd.id.endsWith('}')) {
+        const inner = nd.id.slice(1, -1).trim();
+        subsetSize = inner ? inner.split(',').map(s => s.trim()).filter(Boolean).length : 0;
+      }
+      if (subsetSize >= 4) {
+        const readableRadius = Math.min(56, baseRadiusForNode + Math.min(20, (subsetSize - 3) * 3.8));
+        const enlargedRadius = Math.max(baseRadiusForNode, readableRadius) * 1.6;
+        nodeRadii[nd.id] = Math.min(72, enlargedRadius);
+      } else {
+        nodeRadii[nd.id] = baseRadiusForNode;
+      }
     }
-    const maxNodeRadius = Math.max(baseNodeRadius, ...Object.values(nodeRadii));
+    // Keep layout spacing based on original sizing so other nodes keep their structure.
+    const maxNodeRadius = Math.max(baseNodeRadius, ...Object.values(layoutNodeRadii));
     const cx = W / 2 + (opts.centerXOffset || 0);
     const cy = H / 2 + (opts.centerYOffset || 0);
     // Use available canvas space directly so long labels do not collapse all nodes into the center.
@@ -380,7 +396,8 @@ q1,b->q2`;
     let bbMinX = Infinity, bbMinY = Infinity, bbMaxX = -Infinity, bbMaxY = -Infinity;
     for (const nd of nodes) {
       const [px, py] = positions[nd.id];
-      const nr = nodeRadii[nd.id];
+      // Keep auto-fit bounds on original sizing so only enlarged nodes look bigger.
+      const nr = layoutNodeRadii[nd.id] || nodeRadii[nd.id];
       // Outward unit vector for this node (direction self-loop extends toward)
       const odx = px - cx, ody = py - cy;
       const olen = Math.hypot(odx, ody) || 1;
