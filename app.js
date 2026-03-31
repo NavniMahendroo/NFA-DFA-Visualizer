@@ -20,11 +20,15 @@ q1,b->q2`;
     nfaSvg: document.getElementById('nfaSvg'),
     dfaSvg: document.getElementById('dfaSvg'),
     nfaTableContainer: document.getElementById('nfaTableContainer'),
-    dfaTableContainer: document.getElementById('dfaTableContainer')
+    dfaTableContainer: document.getElementById('dfaTableContainer'),
+    prevBtn: document.getElementById('prevBtn'),
+    nextBtn: document.getElementById('nextBtn')
   };
 
   const THEME_STORAGE_KEY = 'tafl-theme';
   let nfa = null, dfa = null, steps = [], stepIndex = 0;
+  let nfaHistory = [];
+  let currentHistoryIndex = -1;
 
   function applyTheme(theme){
     const normalized = theme === 'dark' ? 'dark' : 'light';
@@ -82,6 +86,70 @@ q1,b->q2`;
     els.dfaTableContainer.innerHTML = '';
     clearSvg(els.nfaSvg);
     clearSvg(els.dfaSvg);
+    updateNavButtons();
+  }
+
+  function updateNavButtons(){
+    const onLanding = currentHistoryIndex === -1;
+    if (onLanding) {
+      els.prevBtn.disabled = nfaHistory.length === 0;
+      els.nextBtn.disabled = true;
+      return;
+    }
+    els.prevBtn.disabled = currentHistoryIndex <= 0;
+    els.nextBtn.disabled = false;
+  }
+
+  function persistCurrentHistoryPage(){
+    if (currentHistoryIndex < 0 || currentHistoryIndex >= nfaHistory.length || !nfa) {
+      return;
+    }
+    nfaHistory[currentHistoryIndex] = {
+      input: els.nfaInput.value,
+      nfa: structuredClone(nfa),
+      steps: structuredClone(steps),
+      dfa: structuredClone(dfa),
+      stepIndex
+    };
+  }
+
+  function renderVisibleSteps(){
+    els.stepsList.innerHTML = '';
+    for (let i = 0; i < stepIndex && i < steps.length; i++) {
+      els.stepsList.appendChild(pushStepHtml(steps[i], i));
+    }
+  }
+
+  function loadHistoryPage(index){
+    const histEntry = nfaHistory[index];
+    if (!histEntry) return;
+    currentHistoryIndex = index;
+    els.nfaInput.value = histEntry.input;
+    nfa = structuredClone(histEntry.nfa);
+    steps = structuredClone(histEntry.steps);
+    dfa = structuredClone(histEntry.dfa);
+    stepIndex = histEntry.stepIndex;
+    els.stepBtn.disabled = false;
+    els.runAllBtn.disabled = false;
+    renderVisibleSteps();
+    renderAll();
+    updateNavButtons();
+  }
+
+  function showLandingPage(){
+    currentHistoryIndex = -1;
+    els.nfaInput.value = sample;
+    nfa = parseNFA(sample);
+    dfa = null;
+    steps = [];
+    stepIndex = 0;
+    els.stepBtn.disabled = true;
+    els.runAllBtn.disabled = true;
+    els.stepsList.innerHTML = '';
+    els.dfaTableContainer.innerHTML = '';
+    clearSvg(els.dfaSvg);
+    renderAll();
+    updateNavButtons();
   }
 
   function validateNFA(obj){
@@ -561,6 +629,7 @@ q1,b->q2`;
     els.stepsList.innerHTML='';
     for(let k=0;k<=i && k<steps.length;k++) els.stepsList.appendChild(pushStepHtml(steps[k],k));
     renderAll();
+    persistCurrentHistoryPage();
   }
 
   function showAllSteps(){
@@ -573,12 +642,22 @@ q1,b->q2`;
   // UI handlers
   els.parseBtn.addEventListener('click',()=>{
     try{
-      nfa = parseNFA(els.nfaInput.value);
+      const parsed = parseNFA(els.nfaInput.value);
+      nfa = parsed;
       subsetConstruction();
+      nfaHistory.push({
+        input: els.nfaInput.value,
+        nfa: structuredClone(nfa),
+        steps: structuredClone(steps),
+        dfa: structuredClone(dfa),
+        stepIndex: 0
+      });
+      currentHistoryIndex = nfaHistory.length - 1;
       els.stepBtn.disabled = false;
       els.runAllBtn.disabled = false;
-      els.stepsList.innerHTML = '';
+      renderVisibleSteps();
       renderAll();
+      updateNavButtons();
     }catch(e){ alert('Parse error: '+e.message) }
   });
 
@@ -589,12 +668,34 @@ q1,b->q2`;
     stepIndex = steps.length;
     showAllSteps();
     renderAll();
+    persistCurrentHistoryPage();
   });
   els.resetBtn.addEventListener('click',()=>{
-    els.nfaInput.value = sample;
-    nfa = parseNFA(sample);
-    resetOutput();
-    renderAll();
+    nfaHistory = [];
+    showLandingPage();
+  });
+
+  els.prevBtn.addEventListener('click',()=>{
+    if (currentHistoryIndex === -1) {
+      if (nfaHistory.length > 0) loadHistoryPage(nfaHistory.length - 1);
+      return;
+    }
+    persistCurrentHistoryPage();
+    if(currentHistoryIndex > 0){
+      loadHistoryPage(currentHistoryIndex - 1);
+    }
+  });
+
+  els.nextBtn.addEventListener('click',()=>{
+    if (currentHistoryIndex === -1) {
+      return;
+    }
+    persistCurrentHistoryPage();
+    if(currentHistoryIndex < nfaHistory.length - 1){
+      loadHistoryPage(currentHistoryIndex + 1);
+    } else {
+      showLandingPage();
+    }
   });
 
   if (els.themeToggle) {
@@ -609,7 +710,5 @@ q1,b->q2`;
 
   // init sample
   applyTheme(loadSavedTheme());
-  els.nfaInput.value = sample;
-  nfa = parseNFA(sample);
-  renderAll();
+  showLandingPage();
 })();
