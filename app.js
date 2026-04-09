@@ -29,6 +29,12 @@ q1,b->q2`;
   let nfa = null, dfa = null, steps = [], stepIndex = 0;
   let nfaHistory = [];
   let currentHistoryIndex = -1;
+  let nfaNodeMap = new Map();
+  let nfaLineMap = new Map();
+  let nfaLabelMap = new Map();
+  let dfaNodeMap = new Map();
+  let dfaLineMap = new Map();
+  let dfaLabelMap = new Map();
 
   function applyTheme(theme){
     const normalized = theme === 'dark' ? 'dark' : 'light';
@@ -72,6 +78,71 @@ q1,b->q2`;
   function clearSvg(svgEl){
     while(svgEl.firstChild) {
       svgEl.removeChild(svgEl.firstChild);
+    }
+  }
+
+  function clearHoverState(){
+    const highlightedNfaRows = els.nfaTableContainer.querySelectorAll('.is-highlighted');
+    highlightedNfaRows.forEach(row => row.classList.remove('is-highlighted'));
+    const highlightedRows = els.dfaTableContainer.querySelectorAll('.is-highlighted');
+    highlightedRows.forEach(row => row.classList.remove('is-highlighted'));
+    if (nfaNodeMap && nfaNodeMap.size) {
+      nfaNodeMap.forEach(nodeEl => nodeEl.classList.remove('is-highlighted'));
+    }
+    if (nfaLineMap && nfaLineMap.size) {
+      nfaLineMap.forEach(edgeEls => edgeEls.forEach(edgeEl => edgeEl.classList.remove('is-highlighted')));
+    }
+    if (nfaLabelMap && nfaLabelMap.size) {
+      nfaLabelMap.forEach(edgeEls => edgeEls.forEach(edgeEl => edgeEl.classList.remove('is-highlighted')));
+    }
+    if (dfaNodeMap && dfaNodeMap.size) {
+      dfaNodeMap.forEach(nodeEl => nodeEl.classList.remove('is-highlighted'));
+    }
+    if (dfaLineMap && dfaLineMap.size) {
+      dfaLineMap.forEach(edgeEls => edgeEls.forEach(edgeEl => edgeEl.classList.remove('is-highlighted')));
+    }
+    if (dfaLabelMap && dfaLabelMap.size) {
+      dfaLabelMap.forEach(edgeEls => edgeEls.forEach(edgeEl => edgeEl.classList.remove('is-highlighted')));
+    }
+  }
+
+  function registerStateLine(targetMap, state, edgeEl){
+    if (!state || !edgeEl) return;
+    if (!targetMap.has(state)) {
+      targetMap.set(state, new Set());
+    }
+    targetMap.get(state).add(edgeEl);
+  }
+
+  function registerStateLabel(targetMap, state, edgeEl){
+    if (!state || !edgeEl) return;
+    if (!targetMap.has(state)) {
+      targetMap.set(state, new Set());
+    }
+    targetMap.get(state).add(edgeEl);
+  }
+
+  function setTableHover(state, active, tableContainer, lineMap){
+    if (!state) return;
+    const row = tableContainer.querySelector(`tbody tr[data-state="${CSS.escape(state)}"]`);
+    if (row) row.classList.toggle('is-highlighted', active);
+    const lineEls = lineMap.get(state);
+    if (lineEls) {
+      lineEls.forEach(edgeEl => edgeEl.classList.toggle('is-highlighted', active));
+    }
+  }
+
+  function setNodeHover(state, active, nodeMap, lineMap, labelMap){
+    if (!state) return;
+    const nodeEl = nodeMap.get(state);
+    const lineEls = lineMap.get(state);
+    const labelEls = labelMap.get(state);
+    if (nodeEl) nodeEl.classList.toggle('is-highlighted', active);
+    if (lineEls) {
+      lineEls.forEach(edgeEl => edgeEl.classList.toggle('is-highlighted', active));
+    }
+    if (labelEls) {
+      labelEls.forEach(edgeEl => edgeEl.classList.toggle('is-highlighted', active));
     }
   }
 
@@ -196,7 +267,7 @@ q1,b->q2`;
         const key = m[0].trim().toLowerCase();
         const val = m.slice(1).join(':').trim();
         if(key==='states') obj.states = normalizeStateSet(val.split(',').map(s=>s.trim()));
-        if(key==='alphabet') obj.alphabet = normalizeStateSet(val.split(',').map(s=>s.trim()).filter(s=>s!=='' && s!=='eps' && s!=='ε'));
+        if(key==='alphabet') obj.alphabet = normalizeStateSet(val.split(',').map(s=>String(s).trim()).filter(s=>s!=='' && s!=='eps' && s!=='ε'));
         if(key==='start') obj.start = val.trim();
         if(key==='accepting') obj.accepting = normalizeStateSet(val.split(',').map(s=>s.trim()));
       } else {
@@ -456,6 +527,8 @@ q1,b->q2`;
       svgEl.appendChild(startArrow);
     }
 
+    const renderedNodes = new Map();
+
     // edges
     for(const e of mergedEdges){
       const p1 = positions[e.from] || [cx,cy];
@@ -532,6 +605,8 @@ q1,b->q2`;
 
       path.setAttribute('d',d);
       path.setAttribute('class','edge');
+      path.setAttribute('data-from', e.from);
+      path.setAttribute('data-to', e.to);
       path.setAttribute('marker-end', `url(#${markerId})`);
       svgEl.appendChild(path);
       const label = document.createElementNS(svgNs,'text');
@@ -539,18 +614,23 @@ q1,b->q2`;
       label.setAttribute('y',qy-6);
       label.setAttribute('class','edge-label');
       label.textContent = e.label; svgEl.appendChild(label);
+      if (opts.registerLine) opts.registerLine(e.from, path);
+      if (opts.registerLabel) opts.registerLabel(e.from, label);
     }
     // nodes
     for(const nd of nodes){
       const [x,y] = positions[nd.id] || [cx,cy];
       const stateRadius = nodeRadii[nd.id] || baseNodeRadius;
       const g = document.createElementNS(svgNs,'g');
+      g.setAttribute('class', 'dfa-node');
+      g.setAttribute('data-state', nd.id);
       const circle = document.createElementNS(svgNs,'circle');
       circle.setAttribute('cx',x); circle.setAttribute('cy',y); circle.setAttribute('r',stateRadius);
       circle.setAttribute('class','node'+(nd.accept?' accept':'')); g.appendChild(circle);
       if(nd.accept){
         const inner = document.createElementNS(svgNs,'circle');
-        inner.setAttribute('cx',x); inner.setAttribute('cy',y); inner.setAttribute('r',Math.max(10, stateRadius - 4)); inner.setAttribute('class','node');
+        inner.setAttribute('class','node node-inner');
+        inner.setAttribute('cx',x); inner.setAttribute('cy',y); inner.setAttribute('r',Math.max(10, stateRadius - 4));
         inner.setAttribute('fill','none'); inner.setAttribute('stroke',edgeColor); inner.setAttribute('stroke-width','1.2'); g.appendChild(inner);
       }
       const text = document.createElementNS(svgNs,'text');
@@ -563,12 +643,16 @@ q1,b->q2`;
       text.textContent = nd.id;
       g.appendChild(text);
       svgEl.appendChild(g);
+      renderedNodes.set(nd.id, g);
     }
+
+    return renderedNodes;
   }
 
-  function renderTable(){
+  function renderTable(nodeMap = dfaNodeMap){
     // Render DFA table into its dedicated container
     const dfaCont = els.dfaTableContainer; dfaCont.innerHTML='';
+    dfaNodeMap = nodeMap || new Map();
     if(dfa){
       const table = document.createElement('table');
       const thead = document.createElement('thead'); const tr = document.createElement('tr');
@@ -576,7 +660,9 @@ q1,b->q2`;
       for(const a of nfa.alphabet) tr.appendChild(th(a)); thead.appendChild(tr); table.appendChild(thead);
       const tbody = document.createElement('tbody');
       for(const node of dfa.nodes){
-        const row = document.createElement('tr'); row.appendChild(td(node.id));
+        const row = document.createElement('tr');
+        row.setAttribute('data-state', node.id);
+        row.appendChild(td(node.id));
         for(const a of nfa.alphabet){
           const e = dfa.edges.find(x=>x.from===node.id && x.label===a);
           row.appendChild(td(e?e.to:'∅'));
@@ -584,6 +670,28 @@ q1,b->q2`;
         tbody.appendChild(row);
       }
       table.appendChild(tbody); dfaCont.appendChild(table);
+
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      for (const row of rows) {
+        const state = row.getAttribute('data-state');
+        const nodeEl = dfaNodeMap.get(state);
+        const tableActivate = () => {
+          setTableHover(state, true, els.dfaTableContainer, dfaLineMap);
+          setNodeHover(state, true, dfaNodeMap, dfaLineMap, dfaLabelMap);
+        };
+        const tableDeactivate = () => {
+          setTableHover(state, false, els.dfaTableContainer, dfaLineMap);
+          setNodeHover(state, false, dfaNodeMap, dfaLineMap, dfaLabelMap);
+        };
+        const nodeActivate = () => setNodeHover(state, true, dfaNodeMap, dfaLineMap, dfaLabelMap);
+        const nodeDeactivate = () => setNodeHover(state, false, dfaNodeMap, dfaLineMap, dfaLabelMap);
+        row.addEventListener('mouseenter', tableActivate);
+        row.addEventListener('mouseleave', tableDeactivate);
+        if (nodeEl) {
+          nodeEl.addEventListener('mouseenter', nodeActivate);
+          nodeEl.addEventListener('mouseleave', nodeDeactivate);
+        }
+      }
     }
 
     function th(t){ const e=document.createElement('th'); e.textContent=t; return e }
@@ -600,7 +708,9 @@ q1,b->q2`;
     for(const c of cols) tr.appendChild(th(c)); thead.appendChild(tr); table.appendChild(thead);
     const tbody = document.createElement('tbody');
     for(const s of nfa.states){
-      const row = document.createElement('tr'); row.appendChild(td(s));
+      const row = document.createElement('tr');
+      row.setAttribute('data-state', s);
+      row.appendChild(td(s));
       for(const a of nfa.alphabet){
         const targets = normalizeStateSet(nfa.transitions.filter(t=>t.from===s && t.symbol===a).flatMap(t=>t.to));
         row.appendChild(td(targets.length?targets.join(','):'∅'));
@@ -613,6 +723,28 @@ q1,b->q2`;
     }
     table.appendChild(tbody); cont.appendChild(table);
 
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    for (const row of rows) {
+      const state = row.getAttribute('data-state');
+      const nodeEl = nfaNodeMap.get(state);
+      const tableActivate = () => {
+        setTableHover(state, true, els.nfaTableContainer, nfaLineMap);
+        setNodeHover(state, true, nfaNodeMap, nfaLineMap, nfaLabelMap);
+      };
+      const tableDeactivate = () => {
+        setTableHover(state, false, els.nfaTableContainer, nfaLineMap);
+        setNodeHover(state, false, nfaNodeMap, nfaLineMap, nfaLabelMap);
+      };
+      const nodeActivate = () => setNodeHover(state, true, nfaNodeMap, nfaLineMap, nfaLabelMap);
+      const nodeDeactivate = () => setNodeHover(state, false, nfaNodeMap, nfaLineMap, nfaLabelMap);
+      row.addEventListener('mouseenter', tableActivate);
+      row.addEventListener('mouseleave', tableDeactivate);
+      if (nodeEl) {
+        nodeEl.addEventListener('mouseenter', nodeActivate);
+        nodeEl.addEventListener('mouseleave', nodeDeactivate);
+      }
+    }
+
     function th(t){ const e=document.createElement('th'); e.textContent=t; return e }
     function td(t){ const e=document.createElement('td'); e.textContent=t; return e }
   }
@@ -622,20 +754,38 @@ q1,b->q2`;
       resetOutput();
       return;
     }
+    nfaLineMap = new Map();
+    nfaLabelMap = new Map();
+      dfaLineMap = new Map();
+      dfaLabelMap = new Map();
     // draw NFA
     const nNodes = nfa.states.map(s=>({id:s, accept:nfa.accepting.includes(s)}));
     const nEdges = nfa.transitions.flatMap(t => t.to.map(target => ({from:t.from,to:target,label:t.symbol})));
     // Keep NFA centred vertically in the box.
     // xMidYMin snaps diagram to top of SVG so it aligns with the state table.
-    drawGraph(els.nfaSvg, nNodes, nEdges, nfa.start, { centerYOffset: -30, radiusScale: 0.9, preserveAspectRatio: 'xMidYMin meet' });
+    nfaNodeMap = drawGraph(els.nfaSvg, nNodes, nEdges, nfa.start, {
+      centerYOffset: -30,
+      radiusScale: 0.9,
+      preserveAspectRatio: 'xMidYMin meet',
+      registerLine: (state, edgeEl) => registerStateLine(nfaLineMap, state, edgeEl),
+      registerLabel: (state, edgeEl) => registerStateLabel(nfaLabelMap, state, edgeEl)
+    });
     if(dfa) {
       // Keep DFA higher/tighter so both top and bottom self-loops stay inside the box.
-      drawGraph(els.dfaSvg, dfa.nodes, dfa.edges, dfa.start, { centerYOffset: -8, radiusScale: 0.8 });
+      dfaNodeMap = drawGraph(els.dfaSvg, dfa.nodes, dfa.edges, dfa.start, {
+        centerYOffset: -8,
+        radiusScale: 0.8,
+        registerLine: (state, edgeEl) => registerStateLine(dfaLineMap, state, edgeEl),
+        registerLabel: (state, edgeEl) => registerStateLabel(dfaLabelMap, state, edgeEl)
+      });
     } else {
+      dfaNodeMap = new Map();
+      dfaLineMap = new Map();
+      dfaLabelMap = new Map();
       clearSvg(els.dfaSvg);
     }
     renderNFATable();
-    renderTable();
+    renderTable(dfaNodeMap);
   }
 
   function pushStepHtml(step, idx){

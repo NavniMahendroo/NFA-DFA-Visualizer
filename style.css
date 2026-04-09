@@ -37,6 +37,14 @@
 	--brand-deep: #0a6e59;
 	--accent: #e69d2a;
 	--ok: #2f7e48;
+	--hover-row-bg: rgba(223, 65, 140, 0.14);
+	--hover-row-ink: #7c1f52;
+	--hover-row-border: rgba(215, 56, 132, 0.3);
+	--hover-node-fill: #ffe6f3;
+	--hover-node-stroke: #cc2f82;
+	--hover-node-glow: rgba(204, 47, 130, 0.28);
+	--hover-edge-stroke: #cc2f82;
+	--hover-edge-glow: rgba(204, 47, 130, 0.24);
 	--shadow: 0 18px 40px rgba(21, 36, 30, 0.12);
 	--radius-xl: 22px;
 	--radius-md: 14px;
@@ -66,6 +74,14 @@ body[data-theme='dark'] {
 	--table-head-bg: rgba(26, 145, 118, 0.28);
 	--table-head-ink: #c9f0e6;
 	--steps-ink: #cfdae7;
+	--hover-row-bg: rgba(255, 111, 183, 0.18);
+	--hover-row-ink: #ffeaf5;
+	--hover-row-border: rgba(255, 150, 208, 0.34);
+	--hover-node-fill: #3a1730;
+	--hover-node-stroke: #ff8fcc;
+	--hover-node-glow: rgba(255, 143, 204, 0.36);
+	--hover-edge-stroke: #ff8fcc;
+	--hover-edge-glow: rgba(255, 143, 204, 0.32);
 	--node-fill: #10202e;
 	--node-stroke: #c3d7ea;
 	--node-accept: #7ddc95;
@@ -386,6 +402,18 @@ button:disabled {
 	font-size: 0.86rem;
 }
 
+.table-panel tbody tr {
+	transition: background-color 0.16s ease, color 0.16s ease;
+	cursor: default;
+}
+
+.table-panel tbody tr:hover td,
+.table-panel tbody tr.is-highlighted td {
+	background: var(--hover-row-bg);
+	color: var(--hover-row-ink);
+	border-color: var(--hover-row-border);
+}
+
 .table-panel th,
 .table-panel td {
 	border: 1px solid var(--table-cell-border);
@@ -408,6 +436,33 @@ svg {
 	stroke-width: 1.6px;
 }
 
+.dfa-node {
+	transition: filter 0.16s ease, opacity 0.16s ease;
+}
+
+.dfa-node.is-highlighted {
+	filter: drop-shadow(0 0 10px var(--hover-node-glow));
+}
+
+.dfa-node.is-highlighted > .node:not(.node-inner) {
+	fill: var(--hover-node-fill);
+	stroke: var(--hover-node-stroke);
+	stroke-width: 3px;
+}
+
+.dfa-node.is-highlighted > .node.accept:not(.node-inner) {
+	stroke-width: 4px;
+}
+
+.dfa-node.is-highlighted .node-label {
+	fill: var(--hover-node-stroke);
+}
+
+.dfa-node.is-highlighted .node-inner {
+	fill: none;
+	stroke: var(--hover-node-stroke);
+}
+
 .node.accept {
 	stroke: var(--node-accept);
 	stroke-width: 3px;
@@ -424,6 +479,14 @@ svg {
 	stroke: var(--edge-color);
 	fill: none;
 	stroke-width: 1.7px;
+	transition: stroke 0.16s ease, stroke-width 0.16s ease, opacity 0.16s ease, filter 0.16s ease;
+}
+
+.edge.is-highlighted {
+	stroke: var(--hover-edge-stroke);
+	stroke-width: 3px;
+	filter: drop-shadow(0 0 8px var(--hover-edge-glow));
+	opacity: 1;
 }
 
 .edge-label {
@@ -433,6 +496,16 @@ svg {
 	stroke: var(--edge-label-stroke);
 	stroke-width: 3.8px;
 	stroke-linejoin: round;
+	transition: transform 0.16s ease, opacity 0.16s ease, stroke-width 0.16s ease, filter 0.16s ease;
+	transform-box: fill-box;
+	transform-origin: center;
+}
+
+.edge-label.is-highlighted {
+	font-weight: 700;
+	stroke-width: 4.2px;
+	transform: translateY(-1px) scale(1.04);
+	opacity: 1;
 }
 
 .start-arrow {
