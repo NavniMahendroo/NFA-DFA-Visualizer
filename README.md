@@ -54,6 +54,9 @@ Manual NFA to DFA conversion is often error-prone, especially when epsilon-closu
 4. Use Next Step or Run All to view conversion progress.
 5. Use Prev or Next to move between saved conversion runs.
 
+### Live Demo
+https://nfa-dfa-visualizer-lyart.vercel.app/
+
 ### Expected Learning Outcomes
 - Understand epsilon-closure and move operations practically.
 - Learn subset construction flow from start subset to full DFA.
