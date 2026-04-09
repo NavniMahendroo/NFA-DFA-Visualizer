@@ -448,6 +448,10 @@ footer {
 	font-size: 0.88rem;
 }
 
+footer small {
+	display: block;
+}
+
 @keyframes riseIn {
 	from {
 		opacity: 0;
