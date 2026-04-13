@@ -51,8 +51,9 @@ Manual NFA to DFA conversion is often error-prone, especially when epsilon-closu
 1. Open index.html in any modern browser.
 2. Edit NFA definition in the input panel.
 3. Click Parse NFA.
-4. Use Next Step or Run All to view conversion progress.
-5. Use Prev or Next to move between saved conversion runs.
+4. The NFA input can be changed by changing the values in States,Alphabets, Start, Accepting(Final), Transitions.
+5. Use Next Step or Run All to view conversion progress.
+6. Use Prev or Next to move between saved conversion runs.
 
 ### Live Demo
 https://nfa-dfa-visualizer-lyart.vercel.app/
